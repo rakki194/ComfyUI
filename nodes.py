@@ -363,6 +363,9 @@ class ConditioningZeroOut:
             pooled_output = d.get("pooled_output", None)
             if pooled_output is not None:
                 d["pooled_output"] = torch.zeros_like(pooled_output)
+            conditioning_lyrics = d.get("conditioning_lyrics", None)
+            if conditioning_lyrics is not None:
+                d["conditioning_lyrics"] = torch.zeros_like(conditioning_lyrics)
             n = [torch.zeros_like(t[0]), d]
             c.append(n)
         return (c,)
@@ -1343,6 +1346,7 @@ class UNETLoader:
 
 class CLIPLoader:
     @classmethod
+<<<<<<< HEAD
     def INPUT_TYPES(cls):
         return {
             "required": {
@@ -1369,6 +1373,15 @@ class CLIPLoader:
             },
         }
 
+=======
+    def INPUT_TYPES(s):
+        return {"required": { "clip_name": (folder_paths.get_filename_list("text_encoders"), ),
+                              "type": (["stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma", "ace"], ),
+                              },
+                "optional": {
+                              "device": (["default", "cpu"], {"advanced": True}),
+                             }}
+>>>>>>> a814f2e8ccf171c967ee2dc095dd02f2a93dccde
     RETURN_TYPES = ("CLIP",)
     FUNCTION = "load_clip"
 
@@ -3276,26 +3289,78 @@ def init_builtin_extra_nodes():
         "nodes_optimalsteps.py",
         "nodes_hidream.py",
         "nodes_fresca.py",
+        "nodes_apg.py",
         "nodes_preview_any.py",
+<<<<<<< HEAD
+=======
+        "nodes_ace.py",
+        "nodes_string.py",
+>>>>>>> a814f2e8ccf171c967ee2dc095dd02f2a93dccde
     ]
 
     import_failed = []
     for node_file in extras_files:
+<<<<<<< HEAD
         if not load_custom_node(
             os.path.join(extras_dir, node_file), module_parent="comfy_extras"
         ):
+=======
+        if not load_custom_node(os.path.join(extras_dir, node_file), module_parent="comfy_extras"):
             import_failed.append(node_file)
 
     return import_failed
 
 
-def init_extra_nodes(init_custom_nodes=True):
+def init_builtin_api_nodes():
+    api_nodes_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy_api_nodes")
+    api_nodes_files = [
+        "nodes_ideogram.py",
+        "nodes_openai.py",
+        "nodes_minimax.py",
+        "nodes_veo2.py",
+        "nodes_kling.py",
+        "nodes_bfl.py",
+        "nodes_luma.py",
+        "nodes_recraft.py",
+        "nodes_pixverse.py",
+        "nodes_stability.py",
+        "nodes_pika.py",
+    ]
+
+    if not load_custom_node(os.path.join(api_nodes_dir, "canary.py"), module_parent="comfy_api_nodes"):
+        return api_nodes_files
+
+    import_failed = []
+    for node_file in api_nodes_files:
+        if not load_custom_node(os.path.join(api_nodes_dir, node_file), module_parent="comfy_api_nodes"):
+>>>>>>> a814f2e8ccf171c967ee2dc095dd02f2a93dccde
+            import_failed.append(node_file)
+
+    return import_failed
+
+
+def init_extra_nodes(init_custom_nodes=True, init_api_nodes=True):
     import_failed = init_builtin_extra_nodes()
+
+    import_failed_api = []
+    if init_api_nodes:
+        import_failed_api = init_builtin_api_nodes()
 
     if init_custom_nodes:
         init_external_custom_nodes()
     else:
         logging.info("Skipping loading of custom nodes")
+
+    if len(import_failed_api) > 0:
+        logging.warning("WARNING: some comfy_api_nodes/ nodes did not import correctly. This may be because they are missing some dependencies.\n")
+        for node in import_failed_api:
+            logging.warning("IMPORT FAILED: {}".format(node))
+        logging.warning("\nThis issue might be caused by new missing dependencies added the last time you updated ComfyUI.")
+        if args.windows_standalone_build:
+            logging.warning("Please run the update script: update/update_comfyui.bat")
+        else:
+            logging.warning("Please do a: pip install -r requirements.txt")
+        logging.warning("")
 
     if len(import_failed) > 0:
         logging.warning(
