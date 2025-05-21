@@ -183,10 +183,10 @@ class Chroma(nn.Module):
         if img.ndim != 3 or txt.ndim != 3:
             raise ValueError("Input img and txt tensors must have 3 dimensions.")
 
-        print("DEBUG: timesteps shape:", timesteps.shape)
-        print("DEBUG: guidance shape:", guidance.shape)
-        print("DEBUG: timesteps value:", timesteps)
-        print("DEBUG: guidance value:", guidance)
+        # print("DEBUG: timesteps shape:", timesteps.shape)
+        # print("DEBUG: guidance shape:", guidance.shape)
+        # print("DEBUG: timesteps value:", timesteps)
+        # print("DEBUG: guidance value:", guidance)
 
         # running on sequences img
         img = self.img_in(img)
@@ -341,15 +341,15 @@ class Chroma(nn.Module):
             y = torch.zeros((batch, 1), device=device, dtype=dtype)
         if guidance is None:
             guidance = torch.zeros((batch,), device=device, dtype=dtype)
-        print("DEBUG: Chroma.forward x shape:", x.shape, type(x))
-        print("DEBUG: Chroma.forward timestep shape:", timestep.shape, type(timestep))
-        print(
-            "DEBUG: Chroma.forward context shape:",
-            context.shape if context is not None else None,
-            type(context),
-        )
-        print("DEBUG: Chroma.forward y shape:", y.shape, type(y))
-        print("DEBUG: Chroma.forward guidance shape:", guidance.shape, type(guidance))
+        # print("DEBUG: Chroma.forward x shape:", x.shape, type(x))
+        # print("DEBUG: Chroma.forward timestep shape:", timestep.shape, type(timestep))
+        # print(
+        #     "DEBUG: Chroma.forward context shape:",
+        #     context.shape if context is not None else None,
+        #     type(context),
+        # )
+        # print("DEBUG: Chroma.forward y shape:", y.shape, type(y))
+        # print("DEBUG: Chroma.forward guidance shape:", guidance.shape, type(guidance))
         bs, c, h, w = x.shape
         patch_size = 2
         x = comfy.ldm.common_dit.pad_to_patch_size(x, (patch_size, patch_size))
