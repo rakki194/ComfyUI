@@ -150,17 +150,6 @@ if __name__ == "__main__":
 
     import cuda_malloc
 
-<<<<<<< HEAD
-if args.windows_standalone_build:
-    try:
-        from fix_torch import fix_pytorch_libomp
-
-        fix_pytorch_libomp()
-    except:
-        pass
-
-=======
->>>>>>> d8e5662822168101afb5e08a8ba75b6eefff6e02
 import comfy.utils
 
 import execution

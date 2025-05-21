@@ -1,4 +1,4 @@
-#Original code can be found on: https://github.com/black-forest-labs/flux
+# Original code can be found on: https://github.com/black-forest-labs/flux
 
 from dataclasses import dataclass
 
@@ -41,14 +41,20 @@ class ChromaParams:
     n_layers: int
 
 
-
-
 class Chroma(nn.Module):
     """
     Transformer model for flow matching on sequences.
     """
 
-    def __init__(self, image_model=None, final_layer=True, dtype=None, device=None, operations=None, **kwargs):
+    def __init__(
+        self,
+        image_model=None,
+        final_layer=True,
+        dtype=None,
+        device=None,
+        operations=None,
+        **kwargs,
+    ):
         super().__init__()
         self.dtype = dtype
         params = ChromaParams(**kwargs)
@@ -62,25 +68,34 @@ class Chroma(nn.Module):
             )
         pe_dim = params.hidden_size // params.num_heads
         if sum(params.axes_dim) != pe_dim:
-            raise ValueError(f"Got {params.axes_dim} but expected positional dim {pe_dim}")
+            raise ValueError(
+                f"Got {params.axes_dim} but expected positional dim {pe_dim}"
+            )
         self.hidden_size = params.hidden_size
         self.num_heads = params.num_heads
         self.in_dim = params.in_dim
         self.out_dim = params.out_dim
         self.hidden_dim = params.hidden_dim
         self.n_layers = params.n_layers
-        self.pe_embedder = EmbedND(dim=pe_dim, theta=params.theta, axes_dim=params.axes_dim)
-        self.img_in = operations.Linear(self.in_channels, self.hidden_size, bias=True, dtype=dtype, device=device)
-        self.txt_in = operations.Linear(params.context_in_dim, self.hidden_size, dtype=dtype, device=device)
+        self.pe_embedder = EmbedND(
+            dim=pe_dim, theta=params.theta, axes_dim=params.axes_dim
+        )
+        self.img_in = operations.Linear(
+            self.in_channels, self.hidden_size, bias=True, dtype=dtype, device=device
+        )
+        self.txt_in = operations.Linear(
+            params.context_in_dim, self.hidden_size, dtype=dtype, device=device
+        )
         # set as nn identity for now, will overwrite it later.
         self.distilled_guidance_layer = Approximator(
-                    in_dim=self.in_dim,
-                    hidden_dim=self.hidden_dim,
-                    out_dim=self.out_dim,
-                    n_layers=self.n_layers,
-                    dtype=dtype, device=device, operations=operations
-                )
-
+            in_dim=self.in_dim,
+            hidden_dim=self.hidden_dim,
+            out_dim=self.out_dim,
+            n_layers=self.n_layers,
+            dtype=dtype,
+            device=device,
+            operations=operations,
+        )
 
         self.double_blocks = nn.ModuleList(
             [
@@ -89,7 +104,9 @@ class Chroma(nn.Module):
                     self.num_heads,
                     mlp_ratio=params.mlp_ratio,
                     qkv_bias=params.qkv_bias,
-                    dtype=dtype, device=device, operations=operations
+                    dtype=dtype,
+                    device=device,
+                    operations=operations,
                 )
                 for _ in range(params.depth)
             ]
@@ -97,13 +114,27 @@ class Chroma(nn.Module):
 
         self.single_blocks = nn.ModuleList(
             [
-                SingleStreamBlock(self.hidden_size, self.num_heads, mlp_ratio=params.mlp_ratio, dtype=dtype, device=device, operations=operations)
+                SingleStreamBlock(
+                    self.hidden_size,
+                    self.num_heads,
+                    mlp_ratio=params.mlp_ratio,
+                    dtype=dtype,
+                    device=device,
+                    operations=operations,
+                )
                 for _ in range(params.depth_single_blocks)
             ]
         )
 
         if final_layer:
-            self.final_layer = LastLayer(self.hidden_size, 1, self.out_channels, dtype=dtype, device=device, operations=operations)
+            self.final_layer = LastLayer(
+                self.hidden_size,
+                1,
+                self.out_channels,
+                dtype=dtype,
+                device=device,
+                operations=operations,
+            )
 
         self.skip_mmdit = []
         self.skip_dit = []
@@ -136,7 +167,6 @@ class Chroma(nn.Module):
             )
         raise ValueError("Bad block_type")
 
-
     def forward_orig(
         self,
         img: Tensor,
@@ -145,7 +175,7 @@ class Chroma(nn.Module):
         txt_ids: Tensor,
         timesteps: Tensor,
         guidance: Tensor = None,
-        control = None,
+        control=None,
         transformer_options={},
         attn_mask: Tensor = None,
     ) -> Tensor:
@@ -153,23 +183,46 @@ class Chroma(nn.Module):
         if img.ndim != 3 or txt.ndim != 3:
             raise ValueError("Input img and txt tensors must have 3 dimensions.")
 
+        print("DEBUG: timesteps shape:", timesteps.shape)
+        print("DEBUG: guidance shape:", guidance.shape)
+        print("DEBUG: timesteps value:", timesteps)
+        print("DEBUG: guidance value:", guidance)
+
         # running on sequences img
         img = self.img_in(img)
 
         # distilled vector guidance
         mod_index_length = 344
-        distill_timestep = timestep_embedding(timesteps.detach().clone(), 16).to(img.device, img.dtype)
+        distill_timestep = timestep_embedding(timesteps.detach().clone(), 16).to(
+            img.device, img.dtype
+        )
         # guidance = guidance *
-        distil_guidance = timestep_embedding(guidance.detach().clone(), 16).to(img.device, img.dtype)
+        distil_guidance = timestep_embedding(guidance.detach().clone(), 16).to(
+            img.device, img.dtype
+        )
 
         # get all modulation index
-        modulation_index = timestep_embedding(torch.arange(mod_index_length), 32).to(img.device, img.dtype)
+        modulation_index = timestep_embedding(torch.arange(mod_index_length), 32).to(
+            img.device, img.dtype
+        )
         # we need to broadcast the modulation index here so each batch has all of the index
-        modulation_index = modulation_index.unsqueeze(0).repeat(img.shape[0], 1, 1).to(img.device, img.dtype)
+        modulation_index = (
+            modulation_index.unsqueeze(0)
+            .repeat(img.shape[0], 1, 1)
+            .to(img.device, img.dtype)
+        )
         # and we need to broadcast timestep and guidance along too
-        timestep_guidance = torch.cat([distill_timestep, distil_guidance], dim=1).unsqueeze(1).repeat(1, mod_index_length, 1).to(img.dtype).to(img.device, img.dtype)
+        timestep_guidance = (
+            torch.cat([distill_timestep, distil_guidance], dim=1)
+            .unsqueeze(1)
+            .repeat(1, mod_index_length, 1)
+            .to(img.dtype)
+            .to(img.device, img.dtype)
+        )
         # then and only then we could concatenate it together
-        input_vec = torch.cat([timestep_guidance, modulation_index], dim=-1).to(img.device, img.dtype)
+        input_vec = torch.cat([timestep_guidance, modulation_index], dim=-1).to(
+            img.device, img.dtype
+        )
 
         mod_vectors = self.distilled_guidance_layer(input_vec)
 
@@ -186,31 +239,36 @@ class Chroma(nn.Module):
                     self.get_modulations(mod_vectors, "double_txt", idx=i),
                 )
                 if ("double_block", i) in blocks_replace:
+
                     def block_wrap(args):
                         out = {}
-                        out["img"], out["txt"] = block(img=args["img"],
-                                                       txt=args["txt"],
-                                                       vec=args["vec"],
-                                                       pe=args["pe"],
-                                                       attn_mask=args.get("attn_mask"))
+                        out["img"], out["txt"] = block(
+                            img=args["img"],
+                            txt=args["txt"],
+                            vec=args["vec"],
+                            pe=args["pe"],
+                            attn_mask=args.get("attn_mask"),
+                        )
                         return out
 
-                    out = blocks_replace[("double_block", i)]({"img": img,
-                                                               "txt": txt,
-                                                               "vec": double_mod,
-                                                               "pe": pe,
-                                                               "attn_mask": attn_mask},
-                                                              {"original_block": block_wrap})
+                    out = blocks_replace[("double_block", i)](
+                        {
+                            "img": img,
+                            "txt": txt,
+                            "vec": double_mod,
+                            "pe": pe,
+                            "attn_mask": attn_mask,
+                        },
+                        {"original_block": block_wrap},
+                    )
                     txt = out["txt"]
                     img = out["img"]
                 else:
-                    img, txt = block(img=img,
-                                     txt=txt,
-                                     vec=double_mod,
-                                     pe=pe,
-                                     attn_mask=attn_mask)
+                    img, txt = block(
+                        img=img, txt=txt, vec=double_mod, pe=pe, attn_mask=attn_mask
+                    )
 
-                if control is not None: # Controlnet
+                if control is not None:  # Controlnet
                     control_i = control.get("input")
                     if i < len(control_i):
                         add = control_i[i]
@@ -223,24 +281,31 @@ class Chroma(nn.Module):
             if i not in self.skip_dit:
                 single_mod = self.get_modulations(mod_vectors, "single", idx=i)
                 if ("single_block", i) in blocks_replace:
+
                     def block_wrap(args):
                         out = {}
-                        out["img"] = block(args["img"],
-                                           vec=args["vec"],
-                                           pe=args["pe"],
-                                           attn_mask=args.get("attn_mask"))
+                        out["img"] = block(
+                            args["img"],
+                            vec=args["vec"],
+                            pe=args["pe"],
+                            attn_mask=args.get("attn_mask"),
+                        )
                         return out
 
-                    out = blocks_replace[("single_block", i)]({"img": img,
-                                                               "vec": single_mod,
-                                                               "pe": pe,
-                                                               "attn_mask": attn_mask},
-                                                              {"original_block": block_wrap})
+                    out = blocks_replace[("single_block", i)](
+                        {
+                            "img": img,
+                            "vec": single_mod,
+                            "pe": pe,
+                            "attn_mask": attn_mask,
+                        },
+                        {"original_block": block_wrap},
+                    )
                     img = out["img"]
                 else:
                     img = block(img, vec=single_mod, pe=pe, attn_mask=attn_mask)
 
-                if control is not None: # Controlnet
+                if control is not None:  # Controlnet
                     control_o = control.get("output")
                     if i < len(control_o):
                         add = control_o[i]
@@ -249,23 +314,74 @@ class Chroma(nn.Module):
 
         img = img[:, txt.shape[1] :, ...]
         final_mod = self.get_modulations(mod_vectors, "final")
-        img = self.final_layer(img, vec=final_mod)  # (N, T, patch_size ** 2 * out_channels)
+        img = self.final_layer(
+            img, vec=final_mod
+        )  # (N, T, patch_size ** 2 * out_channels)
         return img
 
-    def forward(self, x, timestep, context, guidance, control=None, transformer_options={}, **kwargs):
+    def forward(
+        self,
+        x,
+        timestep,
+        context=None,
+        y=None,
+        guidance=None,
+        control=None,
+        transformer_options={},
+        **kwargs,
+    ):
+        # Ensure all model parameters are on the same device as the input
+        self.to(x.device)
+        # Provide sensible defaults for y and guidance if not given
+        batch = x.shape[0]
+        device = x.device
+        dtype = x.dtype
+        if y is None:
+            # Use zeros with shape [batch, 1] (or adjust as needed)
+            y = torch.zeros((batch, 1), device=device, dtype=dtype)
+        if guidance is None:
+            guidance = torch.zeros((batch,), device=device, dtype=dtype)
+        print("DEBUG: Chroma.forward x shape:", x.shape, type(x))
+        print("DEBUG: Chroma.forward timestep shape:", timestep.shape, type(timestep))
+        print(
+            "DEBUG: Chroma.forward context shape:",
+            context.shape if context is not None else None,
+            type(context),
+        )
+        print("DEBUG: Chroma.forward y shape:", y.shape, type(y))
+        print("DEBUG: Chroma.forward guidance shape:", guidance.shape, type(guidance))
         bs, c, h, w = x.shape
         patch_size = 2
         x = comfy.ldm.common_dit.pad_to_patch_size(x, (patch_size, patch_size))
-
-        img = rearrange(x, "b c (h ph) (w pw) -> b (h w) (c ph pw)", ph=patch_size, pw=patch_size)
-
-        h_len = ((h + (patch_size // 2)) // patch_size)
-        w_len = ((w + (patch_size // 2)) // patch_size)
+        img = rearrange(
+            x, "b c (h ph) (w pw) -> b (h w) (c ph pw)", ph=patch_size, pw=patch_size
+        )
+        h_len = (h + (patch_size // 2)) // patch_size
+        w_len = (w + (patch_size // 2)) // patch_size
         img_ids = torch.zeros((h_len, w_len, 3), device=x.device, dtype=x.dtype)
-        img_ids[:, :, 1] = img_ids[:, :, 1] + torch.linspace(0, h_len - 1, steps=h_len, device=x.device, dtype=x.dtype).unsqueeze(1)
-        img_ids[:, :, 2] = img_ids[:, :, 2] + torch.linspace(0, w_len - 1, steps=w_len, device=x.device, dtype=x.dtype).unsqueeze(0)
+        img_ids[:, :, 1] = img_ids[:, :, 1] + torch.linspace(
+            0, h_len - 1, steps=h_len, device=x.device, dtype=x.dtype
+        ).unsqueeze(1)
+        img_ids[:, :, 2] = img_ids[:, :, 2] + torch.linspace(
+            0, w_len - 1, steps=w_len, device=x.device, dtype=x.dtype
+        ).unsqueeze(0)
         img_ids = repeat(img_ids, "h w c -> b (h w) c", b=bs)
-
-        txt_ids = torch.zeros((bs, context.shape[1], 3), device=x.device, dtype=x.dtype)
-        out = self.forward_orig(img, img_ids, context, txt_ids, timestep, guidance, control, transformer_options, attn_mask=kwargs.get("attention_mask", None))
-        return rearrange(out, "b (h w) (c ph pw) -> b c (h ph) (w pw)", h=h_len, w=w_len, ph=2, pw=2)[:,:,:h,:w]
+        txt_ids = (
+            torch.zeros((bs, context.shape[1], 3), device=x.device, dtype=x.dtype)
+            if context is not None
+            else None
+        )
+        out = self.forward_orig(
+            img,
+            img_ids,
+            context,
+            txt_ids,
+            timestep,
+            guidance,
+            control,
+            transformer_options,
+            attn_mask=kwargs.get("attention_mask", None),
+        )
+        return rearrange(
+            out, "b (h w) (c ph pw) -> b c (h ph) (w pw)", h=h_len, w=w_len, ph=2, pw=2
+        )[:, :, :h, :w]
