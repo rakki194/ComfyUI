@@ -39,35 +39,6 @@ If you are on the portable package you can run: update\\update_comfyui.bat to so
 """.strip()
 
 
-def check_frontend_version():
-    """Check if the frontend version is up to date."""
-
-    def parse_version(version: str) -> tuple[int, int, int]:
-        return tuple(map(int, version.split(".")))
-
-    try:
-        frontend_version_str = version("comfyui-frontend-package")
-        frontend_version = parse_version(frontend_version_str)
-        with open(req_path, "r", encoding="utf-8") as f:
-            required_frontend = parse_version(f.readline().split("=")[-1])
-        if frontend_version < required_frontend:
-            app.logger.log_startup_warning(
-                f"""
-________________________________________________________________________
-WARNING WARNING WARNING WARNING WARNING
-
-Installed frontend version {".".join(map(str, frontend_version))} is lower than the recommended version {".".join(map(str, required_frontend))}.
-
-{frontend_install_warning_message()}
-________________________________________________________________________
-""".strip()
-            )
-        else:
-            logging.info("ComfyUI frontend version: {}".format(frontend_version_str))
-    except Exception as e:
-        logging.error(f"Failed to check frontend version: {e}")
-
-
 REQUEST_TIMEOUT = 10  # seconds
 
 
@@ -243,7 +214,6 @@ comfyui-workflow-templates is not installed.
             main error source might be request timeout or invalid URL.
         """
         if version_string == DEFAULT_VERSION_STRING:
-            check_frontend_version()
             return cls.default_frontend_path()
 
         repo_owner, repo_name, version = cls.parse_version_string(version_string)
@@ -305,5 +275,4 @@ comfyui-workflow-templates is not installed.
         except Exception as e:
             logging.error("Failed to initialize frontend: %s", e)
             logging.info("Falling back to the default frontend.")
-            check_frontend_version()
             return cls.default_frontend_path()

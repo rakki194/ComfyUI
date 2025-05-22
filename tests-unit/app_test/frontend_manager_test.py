@@ -135,24 +135,6 @@ def test_parse_version_string_invalid():
         FrontendManager.parse_version_string(version_string)
 
 
-def test_init_frontend_default_with_mocks():
-    # Arrange
-    version_string = DEFAULT_VERSION_STRING
-
-    # Act
-    with (
-        patch("app.frontend_management.check_frontend_version") as mock_check,
-        patch.object(
-            FrontendManager, "default_frontend_path", return_value="/mocked/path"
-        ),
-    ):
-        frontend_path = FrontendManager.init_frontend(version_string)
-
-    # Assert
-    assert frontend_path == "/mocked/path"
-    mock_check.assert_called_once()
-
-
 def test_init_frontend_fallback_on_error():
     # Arrange
     version_string = "test-owner/test-repo@1.0.0"
