@@ -308,7 +308,6 @@ def start_comfyui(asyncio_loop=None):
         asyncio_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(asyncio_loop)
     prompt_server = server.PromptServer(asyncio_loop)
-    q = execution.PromptQueue(prompt_server)
 
     hook_breaker_ac10a0.save_functions()
     nodes.init_extra_nodes(init_custom_nodes=not args.disable_all_custom_nodes)
@@ -323,7 +322,7 @@ def start_comfyui(asyncio_loop=None):
         target=prompt_worker,
         daemon=True,
         args=(
-            q,
+            prompt_server.prompt_queue,
             prompt_server,
         ),
     ).start()
