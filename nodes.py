@@ -2194,7 +2194,7 @@ def init_builtin_extra_nodes():
     extras_files = [
         "nodes_latent.py",
         "nodes_hypernetwork.py",
-        "nodes_upscale_model.py",
+        # "nodes_upscale_model.py",
         "nodes_post_processing.py",
         "nodes_mask.py",
         "nodes_compositing.py",
@@ -2202,7 +2202,7 @@ def init_builtin_extra_nodes():
         "nodes_model_merging.py",
         "nodes_tomesd.py",
         "nodes_clip_sdxl.py",
-        "nodes_canny.py",
+        # "nodes_canny.py",
         "nodes_freelunch.py",
         "nodes_custom_sampler.py",
         "nodes_hypertile.py",
@@ -2217,7 +2217,7 @@ def init_builtin_extra_nodes():
         "nodes_photomaker.py",
         "nodes_pixart.py",
         "nodes_cond.py",
-        "nodes_morphology.py",
+        # "nodes_morphology.py",
         "nodes_stable_cascade.py",
         "nodes_differential_diffusion.py",
         "nodes_ip2p.py",
@@ -2227,7 +2227,7 @@ def init_builtin_extra_nodes():
         "nodes_attention_multiply.py",
         "nodes_advanced_samplers.py",
         "nodes_webcam.py",
-        "nodes_audio.py",
+        # "nodes_audio.py",
         "nodes_sd3.py",
         "nodes_gits.py",
         "nodes_controlnet.py",
@@ -2238,11 +2238,11 @@ def init_builtin_extra_nodes():
         "nodes_mochi.py",
         "nodes_slg.py",
         "nodes_mahiro.py",
-        "nodes_lt.py",
+        # "nodes_lt.py",
         "nodes_hooks.py",
-        "nodes_load_3d.py",
+        # "nodes_load_3d.py",
         "nodes_cosmos.py",
-        "nodes_video.py",
+        # "nodes_video.py",
         "nodes_lumina2.py",
         "nodes_wan.py",
         "nodes_lotus.py",
@@ -2298,8 +2298,8 @@ def init_extra_nodes(init_custom_nodes=True, init_api_nodes=True):
     import_failed = init_builtin_extra_nodes()
 
     import_failed_api = []
-    if init_api_nodes:
-        import_failed_api = init_builtin_api_nodes()
+    # if init_api_nodes:
+    #     import_failed_api = init_builtin_api_nodes()
 
     if init_custom_nodes:
         init_external_custom_nodes()

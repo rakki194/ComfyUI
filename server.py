@@ -740,7 +740,7 @@ class PromptServer():
         for name, dir in nodes.EXTENSION_WEB_DIRS.items():
             self.app.add_routes([web.static('/extensions/' + name, dir)])
 
-        workflow_templates_path = FrontendManager.templates_path()
+        workflow_templates_path = None # FrontendManager.templates_path()
         if workflow_templates_path:
             self.app.add_routes([
                 web.static('/templates', workflow_templates_path)
